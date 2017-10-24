@@ -4,14 +4,13 @@ import time
 
 pygame.init()
 
-input = "poolrad2.jpg"
+input = "lily.jpg"
 inputImg = pygame.image.load(input)
 screen = pygame.display.set_mode((inputImg.get_width() * 4, inputImg.get_height()))
 rendered = []
 rendered.append(inputImg)
-currentType = 1
 w = inputImg.get_width()
-h = inputImg.get_height()
+startTime = time.clock()
 
 # Colour spectrums/referneces
 references = [
@@ -27,64 +26,57 @@ names = [
     "tritanopia"
 ]
 
-def colorDistance(col1, col2):
-    red=col1.r
-    green=col1.g
-    blue=col1.b
-
-    red2=col2.r
-    green2=col2.g
-    blue2=col2.b
-
-    distance = math.sqrt(pow((red - red2),2) + pow((green - green2),2) + pow((blue - blue2),2))
+def colourDistance(col1, col2):
+    distance = math.sqrt(pow((col1.r - col2.r),2) + pow((col1.g - col2.g),2) + pow((col1.b - col2.b),2))
     return distance
 
-def closestColour(col, ref):
-    closestCol = (0,0,0)
-    closestDis = 0
+def closestColourPos(img, col):
+    closestCol = 0
+    closestDis = colourDistance(col, references[0].get_at((0,0)))
+    w = references[0].get_width()
 
     for i in xrange(w):
-        refCol = references[ref].get_at((i,0))
-        if colorDistance(col, refCol) < closestDis:
-            closestCol = refCol
-            closestDis = colorDistance(col, refCol)
+        refCol = references[0].get_at((i,0))
+        if colourDistance(col, refCol) < closestDis:
+            closestDis = colourDistance(col, refCol)
+            closestCol = i
     return closestCol
 
-lastTick = time.clock()
+def convertImage(img, refs):
+    images = []
+    w = img.get_width()
+    h = img.get_height()
 
-def convertImage(img, ref):
-    print(img)
-    new_img = pygame.Surface((img.get_width(), img.get_height()))
-    global loopCount
-    global lastTick
-    global totalCount
-    global w
-    global h
     loopCount = 0
+    lastTick = time.clock()
     totalCount = 0
+
+    for i in xrange(refs):
+        images.append(pygame.Surface((w, h)))
+
     for x in xrange(w):
         for y in xrange(h):
-            new_img.set_at((x, y), closestColour(img.get_at((x,y)), ref))
+            closest = closestColourPos(img, img.get_at((x, y)))
+            for i in xrange(refs):
+                images[i].set_at((x, y), references[i+1].get_at((closest, 0)))
+
             loopCount += 1
             if lastTick < math.floor(time.clock()):
                 totalCount += loopCount
-                out = "    " + str(loopCount) + "/s"
-                out += "    " + str(totalCount) + "/" + str(w * h)
+                out = "    " + str(loopCount * refs) + "/s"
+                out += "    " + str(totalCount * refs) + "/" + str(w * h * refs)
                 loopCount = 0
                 lastTick = time.clock() + 1
                 print(out)
-    return new_img
+    return images
 
 def convertAll():
-    global currentType
-    global rendered
-    global toShow
-    if currentType < references.__len__():
-        print(currentType)
-        rendered.append(convertImage(inputImg, currentType))
-        pygame.image.save(rendered[-1], names[currentType] + "_" + input)
-        currentType += 1
-        convertAll()
+        total = len(references) - 1
+        images = convertImage(inputImg, len(references) - 1)
+        for i in xrange(total):
+            pygame.image.save(images[i], names[i+1] + "_" + input)
+            rendered.append(images[i])
+
 convertAll()
 
 done = False
